@@ -449,7 +449,10 @@ Por el momento, importante destacar que la base de datos permite la creación de
 <QuerySet [<Evento: Django 507>, <Evento: Django Rest Framework]
 ```
 
+Para obtener un record, por lo general se utiliza `Modelo.objects.get`, para obtener mas de un record, se utiliza `Modelo.objects.filter`.
+
 #### Actualizacion
+
 ```
 >>> evento = Evento.objects.get(nombre="Django Rest Framework")
 >>> evento.hora
@@ -460,7 +463,10 @@ datetime.time(8, 0)
 datetime.time(10, 0)
 ```
 
+Para asegurar que el record se actualize de manera eficiente, es mejor utilizar `update(campo=nuevo_valor)`.
+
 #### Eliminacion
+
 ```
 >>> evento = Evento.objects.get(nombre="Django Rest Framework")
 >>> evento.delete()
@@ -511,11 +517,142 @@ Apliquemos la migración:
 
 ## Plantillas (Templates)
 
+Django ubica las plantillas a base de lista de carpetas contenidas en una llave denominada `'DIRS'`,  dentro de `TEMPLATES`, ubicado en el archivo de configuraciones del proyecto `django507/settings.py`:
 
+```
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [],		# Aqui
+        'APP_DIRS': True,
+        'OPTIONS': {
+        # ...
+```
+
+Si `APP_DIRS` es `True`, Django buscará un archivo denominado `templates` en cada una de las apps del proyecto, incluyendo cualquier ruta de archivo incluida en `DIRS`.  Por lo general, un proyecto tiene una plantilla general, a fin de que otras plantillas puedan heredarlas y extenderlas. Veremos lo que esto significa a continuación.
+
+Agreguemos lo siguiente:`'DIRS': [os.path.join(BASE_DIR, 'django507/templates')],`
+
+En vista de lo anterior, tenemos que agregar una carpeta denominada `templates` a la altura de `settings.py`. Agreguemos tambien una especificacion para la carpeta de archivos estaticos en `settings.py`:
+
+```python
+STATIC_URL = '/static/'	# esto le indica a Django que busque esta carpeta
+
+STATICFILES_DIRS = [
+	os.path.join(BASE_DIR, 'django507/static')
+]
+```
+
+### Plantilla Base
+
+Dentro de la carpeta `templates`, creamos un archivo denominado `base.html`, que contendrá la estructura general HTML de nuestro sitio. Para efectos prácticos, estaremos utilizando [MaterializeCSS](https://materializecss.com/).
+
+`django507/base.html`
+```html
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Django 507</title>
+</head>
+<body>
+  <nav>
+    <div class="nav-wrapper">
+      <a href="#" class="brand-logo right">Django 507</a>
+      <ul id="nav-mobile" class="left">
+        <li><a href="#">Eventos</a></li>
+        <li><a href="#">Acceder</a></li>
+        <li><a href="#">Registrarse</a></li>
+      </ul>
+    </div>
+  </nav>
+  <div class="content" id="main">
+    <div class="row">
+      <div class="col s3"></div>
+      <div class="col s6">
+        {% block content %}
+        <h1 class="center">Django 507</h1>
+        {% endblock content %}
+      </div>
+      <div class="col s3"></div>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+Las plantillas Django consisten en HTML, etiquetas de plantilla y variables de plantilla. Las etiquetas de plantillas son identificadas como `{% %}` y se utilizan para visualizar logica `{% if %}`, control de loops `{% for evento en eventos %}`, declaraciones de bloque `{% block content %}`, importar contenido `{% include "navbar.html"`, extender plantilla `{% extends "base.html" %}`, entre otras. En cambio, las variables de plantillas se colocan entre `{{ }}` y transfieren data desde la vista a la plantilla. Estas variables pueden ser variables simples, atributos de objeto e incluso métodos.
+
+En cuanto al archivo en referencia `base.html`, la primera linea `{% load static %}` se utiliza para hacer el enlace entre la plantilla y `STATIC_ROOT` del proyecto, que viene a ser lo mismo que `STATIC_URL`.
+
+La declaración de bloque `{% block content %}` es una indicación del lugar en donde se extenderá la plantilla.
+
+Las etiquetas y variables de plantilla harán más sentido cuando se ponen en práctica.
+
+### Actualize su vista 
+
+`eventos/views.py`
+```python
+from django.shortcuts import render
+
+def index(request):
+    return render(request, 'base.html')
+```
+
+### Extensión de la plantilla base
+
+La app de eventos necesita una carpeta de `templates`, que contendrá las plantillas específicas a este sitio. Vamos a crear una carpeta denominada `templates` y otra carpeta denominada `eventos`, dentro de esta carpeta. La estructura será la siguiente:
+```
+eventos/
+	templates/
+		eventos/
+			index.html
+```
+
+`index.html`
+```html
+{% extends "base.html" %}
+
+{% block content %}
+<h3 class="center">Eventos</h3>
+<table class="striped">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Ubicacion</th>
+        <th>Fecha</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for evento in eventos %}
+        <tr>
+          <td><a href="{{ event.get_absolute_url }}">{{ evento.nombre }}</a></td>
+          <td>{{ evento.nombre }}</td>
+          <td>{{ evento.ubicacion }}</td>
+          <td>{{ evento.fecha }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+</table>
+{% endblock content %}
+```
 
 ## Vistas (Views)
 
+Con la plantilla `index.html` ya estamos en posición para configurar nuestras vistas. Necesitamos pasarle a la plantilla todos los eventos de la base de datos:
 
+```python
+from django.shortcuts import render
+from .models import Evento
+
+def index(request):
+	eventos = Evento.objects.all()
+	return render(request, 'eventos/index.html', {'eventos': eventos})
+```
 
 - Vistas (Views)
   - Web app vs. API
