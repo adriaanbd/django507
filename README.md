@@ -90,7 +90,6 @@ class Producto(models.Model):
 # urls.py
 urlpatterns = [
 	path('', views.index),
-	path('show/<int:producto_id>/', views.show)
 ]
 
 # views.py
@@ -562,10 +561,12 @@ Dentro de la carpeta `templates`, creamos un archivo denominado `base.html`, que
 <body>
   <nav>
     <div class="nav-wrapper">
-      <a href="#" class="brand-logo right">Django 507</a>
+      <a href="" class="brand-logo right">Django 507</a>
       <ul id="nav-mobile" class="left">
-        <li><a href="#">Eventos</a></li>
+        <li><a href="">Eventos</a></li>
+        <li><a href="#">Crear Evento</a></li>
         <li><a href="#">Acceder</a></li>
+        <li><a href="#">Salir</a></li>
         <li><a href="#">Registrarse</a></li>
       </ul>
     </div>
@@ -593,7 +594,9 @@ La declaración de bloque `{% block content %}` es una indicación del lugar en 
 
 Las etiquetas y variables de plantilla harán más sentido cuando se ponen en práctica.
 
-### Actualize su vista 
+Por ejemplo, cuando las rutas estan propiamente configuradas, uno puede utilizar el valor especificado en `name`, a fin de generar una ruta de manera dinamica. Por ejemplo, si la ruta tiene el valor `name=index`, uno puede generar la ruta en la plantilla con `{% url 'index' %}`. 
+
+### Actualice su vista 
 
 `eventos/views.py`
 ```python
@@ -602,6 +605,11 @@ from django.shortcuts import render
 def index(request):
     return render(request, 'base.html')
 ```
+
+### Actualice el enlace de Eventos
+
+En la plantilla `base.html`, puede actualizar el enlace:
+`<li><a href="{% url 'index' %}">Eventos</a></li>`
 
 ### Extensión de la plantilla base
 
@@ -643,73 +651,272 @@ eventos/
 
 ## Vistas (Views)
 
-Con la plantilla `index.html` ya estamos en posición para configurar nuestras vistas. Necesitamos pasarle a la plantilla todos los eventos de la base de datos:
+Con la plantilla `index.html` ya estamos en posición para configurar nuestras vistas. 
+
+Necesitamos pasarle a la plantilla todos los eventos de la base de datos:
 
 ```python
 from django.shortcuts import render
 from .models import Evento
 
 def index(request):
-	eventos = Evento.objects.all()
+	eventos = Evento.objects.all()  # aqui obtenemos todos los eventos
 	return render(request, 'eventos/index.html', {'eventos': eventos})
 ```
 
-- Vistas (Views)
-  - Web app vs. API
-  - Vistas a base de clase y funciones
-  - Configuracion de URLs
-- Plantillas (Templates)
-  - Etiquetas y variables de plantilla
-  - Busqueda de plantillas
-  - Plantilla general y archivos estaticos
-  - Plantilla especial y herencia de plantillas
-- Formularios (Forms)
-  - Los formularios de Django
-  - Creación de un formulario
-  - La vista de un formulario
+Si recarga el sitio y navega nuevamente a `http://localhost:8000`, podrá observar la tabla de eventos generados uno por uno, en el modo especificado en la plantilla. Si se fija en el enlace de cada evento, observará que cada enlace le corresponde a cada item, por ejemplo `eventos/1` para el evento uno (1). 
 
-**Django Rest Framework**
+Configuremos la ruta, vista y plantilla de detalle de un evento.
 
-- REST
-- Instalación
-- Preparación del proyecto
-- Serializadores (Serializers)
-- Vistas (Views)
-- URLs / Paths
-- Autenticación (opcional)
+```python
+# eventos/urls.py
+urlpatterns = [
+    # ...
+    path('eventos/<int:pk>/', views.show)
+]
 
-# Proyectos
+# eventos/views.py
+def show(request, pk):
+	evento = Evento.objects.get(id=pk)
+	return render(request, 'eventos/index.html', {'evento': evento})
+```
 
-*Django*
+`eventos/templates/eventos/show.html`
 
-* Tema: 
-  - Web app de talleres de desarrollo de software
-* Requerimentos: 
-  - Modelos: 
-    - Taller (tema, facilitador, descripción, sede, fecha, horario)
-    - Participante (primer nombre, apellido, email)
-  - Relaciones:
-    - Un taller, muchos participantes
-    - Un participante, muchos talleres
-* Requerimentos adicionales (opcional):
-  - Modelos (adicionales):
-    - Facilitador (primer nombre, apellido, email)
-    - Sede (nombre, dirección)
-  - Relaciones (adicionales):
-    - Un taller, un facilitador
-    - Un facilitador, muchos talleres
-    - Un taller, una sede
-    - Una sede, muchos talleres
+```html
+{% extends "base.html" %}
 
-*Django REST API*
+{% block content %}
+<div class="center">
+  <h3>{{ evento.nombre }}</h3>
+    <a href="#">Editar</a>
+    <a href="#">Borrar</a>
+</div>
+<table class="striped">
+  <tr><td class="center">Ubicación: {{ evento.ubicacion }}</td></tr>
+  <tr><td class="center">Fecha: {{ evento.time_start }}</td></tr>
+  <tr><td class="center">Hora: {{ evento.hora }}</td></tr>
+  <tr><td class="center">Descripción: {{ evento.descripcion }}</td></tr>
+  <tr><td class="center">Creador: {{ evento.creador }}</td></tr>
+</table>
+{% endblock content %}
+```
 
-* Tema:
-  - Api del web app de talleres de desarrollo de software
-* Requerimentos:
-  - Lectura de talleres (`GET`)
-  - Creación de un taller (`POST`)
-  - Actualización parcial de un taller (`PATCH`)
-  - Actualización total de un taller (`PUT`)
-  - Eliminación de un taller (`DELETE`)
-* Requerimentos adicionales (`opcional`):
-  - Autenticación para realizar `POST`, `PATCH` / `PUT`, y/o `DELETE`.
+Si recarga el sitio y navega nuevamente a `http://localhost:8000`, podrá observar la tabla de detalle de un evento.
+
+## Formularios (Forms)
+
+Django viene con una clase denominada `Forms` que facilita la creación de formularios, validación de data y widgets asociados (documentación [aquí](https://docs.djangoproject.com/en/2.2/topics/forms/#the-django-form-class). Esta clase es muy parecida a los modelos. 
+
+Por ejemplo:
+
+```
+from django import forms
+
+class MiFormulario(forms.Form):
+	nombre = forms.CharField(max_length=10)
+```
+
+Generaría:
+
+```html
+<label for="nombre">Your name: </label>
+<input id="nombre" type="text" name="your_name" maxlength="100" required>
+```
+
+Aunado a esto, esta clase nos da la posibilidad de generar el formulario a base de [ver](https://docs.djangoproject.com/en/2.2/topics/forms/#form-rendering-options):
+* Tabla: 	{{ form.as_table }}
+* Parrafo: 	{{ form.as_p }}
+* Lista: 	{{ form.as_ul }}
+
+Importante observar que la clase no genera las etiquetas de `<form>` ni el botón. 
+
+Para crear un formulario heredando de `Form`, vamos a tener que replicar practicamente el mismo código que tenemos en nuestro modelo de Evento. Por tanto, Django nos tiene  unos formularios denominados `ModelForms`, que permiten crear un formulario a base de un modelo con poco código [ver documentación](https://docs.djangoproject.com/en/2.2/topics/forms/modelforms/#django.forms.ModelForm):
+
+`eventos/forms.py`
+
+```python
+from django import forms
+from django.forms import ModelForm
+from .models import Evento
+
+class EventForm(ModelForm):
+    class Meta:
+      model = Evento
+      fields = '__all__'
+```
+
+Para configuración / selección de campos para usar en el formulario, ver [documentación](https://docs.djangoproject.com/en/2.2/topics/forms/modelforms/#selecting-the-fields-to-use).
+
+### Creacion de plantilla `new.html`
+`eventos/templates/eventos/new.html`
+
+```html
+{% extends "base.html" %}
+
+{% block content %}
+<h3 class="center">New Event</h3>
+<form method="post" novalidate>
+  {{ form.as_p }}
+  <input type="submit" value="Submit">
+{% csrf_token %}
+</form>
+{% endblock content %}
+```
+
+
+### Agregar vista para crear evento
+
+```python
+from django.shortcuts import render, redirect
+from .models import Evento
+
+# ...
+
+def new(request):
+    if request.method == 'POST':
+        form = EventForm(request.POST)
+        if form.is_valid():
+        	form.save()
+            return redirect('index')
+    else:
+        form = EventForm()
+        if request.method == 'GET':
+            return render(request, 'eventos/new.html', {'form': form})
+```
+
+### Probar el formulario
+
+Navegar a http://127.0.0.1:8000/eventos/new/ y pruebe el nuevo formulario. Notará que está el campo de `creador` en el formulario. 
+
+Que piensa que debe hacer para que no aparezca?
+Que archivo deberá modificar?
+
+## Autenticacion
+
+Hemos creado usuarios a través de la plataforma de administración, y nos hemos autenticado como administrador a través de la misma, sin embargo, debemos poder autenticar usuario del sitio mediante un formulario. La documentación al respecto se encuentra [aquí](https://docs.djangoproject.com/en/2.2/topics/auth/default/), perp no es tan clara al respecto.
+
+El objeto Usuario es pieza fundamental del sistema de autenticación, toda vez que el mismo se autentica proporcionando su nombre de usuario y contraseña, utilizando el método `authenticate`:
+
+```python
+from django.contrib.auth import authenticate
+user = authenticate(username='john', password='secret')
+if user is not None:
+    # A backend authenticated the credentials
+else:
+    # No backend authenticated the credentials
+```
+
+Lo anterior es parte de la respuesta, pero lo cierto es que Django hace todo esto automaticamente, puesto que `django.contrib.auth.urls` esta preconfigurada a utilizar una plantilla ubicada en `registration/login.html`, a nivel de proyecto (no de app). Por lo tanto, la configuración básica consiste en crear una carpeta denominda `registration`, crear un archivo denominado `login.html`, e incluir una ruta nueva con el modulo `django.contrib.auth.urls`.
+
+```html
+{% extends "base.html" %}
+
+{% block content %}
+<h3 class="center">Login</h3>
+<form method="post" action="{% url 'login'%}">
+  {{ form.as_p }}
+  <input type="submit" value="Login">
+  <input type="hidden" name="next" value="{{ next }}" />
+{% csrf_token %}
+</form>
+{% endblock content %}
+```
+
+No tenemos que crear / configurar una vista para esto, porque Django ya viene con una. Lo único que hay que hacer es configurar la ruta, proporcionar el archivo e indicar la ruta de suceso y fracaso.
+
+`django507/urls.py`
+```python
+# ...
+urlpatterns = [
+	# ...
+	path('accounts/', include('django.contrib.auth.urls')),
+]
+```
+
+`django507/settings.py`
+```
+LOGIN_REDIRECT_URL = '/eventos'  # sin especificar va a accounts/profile/
+LOGOUT_REDIRECT_URL = '/eventos'
+```
+
+### Actualice el enlace de Acceder en plantilla base
+```html
+<!-- django507/templates/base.html -->
+
+<li><a href="{% url 'login' %}">Acceder</a></li>
+<li><a href="{% url 'logout' %}">Salir</a></li>
+```
+
+### Autenticarse
+
+Navegar a http://127.0.0.1:8000/accounts/login/ y acceder con el usuario creado a través de la plataforma de administración. Intente acceder y salir.
+
+
+
+# Django Rest Framework
+
+
+
+## Registar la aplicación
+
+`django507/settings.py`
+```
+INSTALLED_APPS = [
+	'rest_framework',
+	#...
+]
+```
+
+
+
+## Configurar el Serializador
+
+Un serializador transforma la data de nuestra base de datos para que puedan ser reproducidas en formato `JSON` o algun otro. Para ello, hay que crear un archivo `serializers.py` o `serializadores.py`
+
+```
+# eventos/serializador.py
+
+from .models import Event
+from rest_framework import serializers
+
+class EventosSerializador(serializers.Serializer):
+    nombre = serializers.CharField(max_length=60)
+    ubicacion = serializers.CharField(max_length=240)
+    fecha = serializers.CharField(max_length=60)
+    hora = serializers.TimeField()
+    descripcion = serializers.CharField(max_length=120)
+```
+
+
+
+## Configurar la vista
+
+```
+# eventos/views.py
+
+from rest_framework import serializers
+from .serializadores import EventosSerializador
+
+class EventosApiView(APIView):
+    def get(self, request):
+        eventos = Evento.objects.all()
+        serializer = EventosSerializador(eventos, many=True)
+        return Response({'eventos': serializer.data})
+```
+
+
+
+## Configurar la ruta
+
+`django507/eventos/urls.py`
+```
+path('api/events/', views.EventsApiView.as_view())
+```
+
+
+
+## Obtener respuesta del API
+
+Navegar a http://localhost:8000/api/eventos/ para obtener una respuesta JSON del servidor de desarrollo y visualizarla en el navegador.
+
